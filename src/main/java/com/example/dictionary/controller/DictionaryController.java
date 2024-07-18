@@ -2,6 +2,7 @@ package com.example.dictionary.controller;
 
 import com.example.dictionary.dto.CreateDictionaryDto;
 import com.example.dictionary.dto.DictionaryDto;
+import com.example.dictionary.model.Dictionary;
 import com.example.dictionary.service.DictionaryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,7 +33,14 @@ public class DictionaryController {
                             content = @Content(mediaType = "application/json", schema = @Schema(implementation = DictionaryDto.class)))
             })
     public DictionaryDto createDictionary(@RequestBody CreateDictionaryDto dictionaryDto) {
-        return dictionaryService.createDictionary(dictionaryDto);
+        Dictionary dictionary = dictionaryService.createDictionary(
+                Dictionary
+                        .builder()
+                        .code(dictionaryDto.getCode())
+                        .description(dictionaryDto.getDescription())
+                        .build()
+        );
+        return new DictionaryDto(dictionary.getId(), dictionary.getCode(), dictionary.getDescription());
     }
 
     @GetMapping
@@ -46,7 +55,20 @@ public class DictionaryController {
                     )
             })
     public List<DictionaryDto> getAllDictionaries() {
-        return dictionaryService.getAllDictionaries();
+        List<Dictionary> dictionaries = dictionaryService.getAllDictionaries();
+        List<DictionaryDto> dictionariesDtos = new ArrayList<>();
+
+        for (Dictionary dictionary : dictionaries) {
+            dictionariesDtos.add(
+                    new DictionaryDto(
+                            dictionary.getId(),
+                            dictionary.getCode(),
+                            dictionary.getDescription()
+                    )
+            );
+        }
+
+        return dictionariesDtos;
     }
 
     @GetMapping("/{id}")
@@ -64,11 +86,13 @@ public class DictionaryController {
                     )
             })
     public DictionaryDto getDictionaryById(@PathVariable UUID id) {
-        try {
-            return dictionaryService.getDictionaryById(id);
-        } catch (Exception e) {
+        Dictionary dictionary = dictionaryService.getDictionaryById(id);
+
+        if (dictionary == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, String.format("Dictionary record not found with id: %s", id));
         }
+
+        return new DictionaryDto(dictionary.getId(), dictionary.getCode(), dictionary.getDescription());
     }
 
     @DeleteMapping("/{id}")
@@ -80,10 +104,12 @@ public class DictionaryController {
                             description = "Dictionary not found")
             })
     public void deleteDictionary(@PathVariable UUID id) {
-        try {
-            dictionaryService.deleteDictionary(id);
-        } catch (Exception e) {
+        Dictionary dictionary = dictionaryService.getDictionaryById(id);
+
+        if (dictionary == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, String.format("Dictionary record not found with id: %s", id));
         }
+
+        dictionaryService.deleteDictionary(id);
     }
 }
